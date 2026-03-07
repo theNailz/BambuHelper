@@ -93,9 +93,9 @@ void drawProgressArc(TFT_eSPI& tft, int16_t cx, int16_t cy, int16_t radius,
 
   bool compact = (radius < 50);
 
-  // Percentage value
+  // Percentage value (no bg color — clearGaugeCenter already filled the circle)
   tft.setTextDatum(MC_DATUM);
-  tft.setTextColor(gc.value, bg);
+  tft.setTextColor(gc.value);
   tft.setTextFont(compact ? 4 : 6);
   char pctBuf[8];
   if (compact) {
@@ -107,7 +107,7 @@ void drawProgressArc(TFT_eSPI& tft, int16_t cx, int16_t cy, int16_t radius,
 
   // Time remaining
   tft.setTextFont(compact ? 1 : 2);
-  tft.setTextColor(CLR_TEXT_DIM, bg);
+  tft.setTextColor(CLR_TEXT_DIM);
   char timeBuf[16];
   if (remainingMin >= 60) {
     snprintf(timeBuf, sizeof(timeBuf), "%dh%dm", remainingMin / 60, remainingMin % 60);
@@ -156,17 +156,17 @@ void drawTempGauge(TFT_eSPI& tft, int16_t cx, int16_t cy, int16_t radius,
   drawArcFill(tft, cx, cy, radius, thickness, drawFill, tempColor, forceRedraw);
   clearGaugeCenter(tft, cx, cy, radius, thickness);
 
-  // Current temp
+  // Current temp (no bg color — clearGaugeCenter already filled the circle)
   tft.setTextDatum(MC_DATUM);
   tft.setTextFont(4);
-  tft.setTextColor(valColor, bg);
+  tft.setTextColor(valColor);
   char tempBuf[12];
   snprintf(tempBuf, sizeof(tempBuf), "%.0f", current);
   tft.drawString(tempBuf, cx, cy - 4);
 
   // Target temp
   tft.setTextFont(1);
-  tft.setTextColor(CLR_TEXT_DIM, bg);
+  tft.setTextColor(CLR_TEXT_DIM);
   snprintf(tempBuf, sizeof(tempBuf), "/%.0f", target);
   tft.drawString(tempBuf, cx, cy + 10);
 
@@ -203,10 +203,10 @@ void drawFanGauge(TFT_eSPI& tft, int16_t cx, int16_t cy, int16_t radius,
   drawArcFill(tft, cx, cy, radius, thickness, drawFill, fanColor, forceRedraw);
   clearGaugeCenter(tft, cx, cy, radius, thickness);
 
-  // Percentage value
+  // Percentage value (no bg color — clearGaugeCenter already filled the circle)
   tft.setTextDatum(MC_DATUM);
   tft.setTextFont(4);
-  tft.setTextColor(valColor, bg);
+  tft.setTextColor(valColor);
   char buf[8];
   snprintf(buf, sizeof(buf), "%d", percent);
   tft.drawString(buf, cx, cy);

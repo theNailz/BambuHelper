@@ -226,8 +226,10 @@ static void mqttCallback(char* topic, byte* payload, unsigned int length) {
   fanVal = parseFan(print["heatbreak_fan_speed"]);
   if (fanVal >= 0) s.heatbreakFanPct = (fanVal * 100) / 15;
 
-  // WiFi signal
-  if (print["wifi_signal"].is<int>())
+  // WiFi signal (Bambu sends as string like "-45dBm" or as int)
+  if (print["wifi_signal"].is<const char*>())
+    s.wifiSignal = atoi(print["wifi_signal"].as<const char*>());
+  else if (print["wifi_signal"].is<int>())
     s.wifiSignal = print["wifi_signal"].as<int>();
 
   // Speed level (1-4)
