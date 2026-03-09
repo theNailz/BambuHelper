@@ -34,6 +34,10 @@ Connects to your printer via MQTT over TLS and displays a real-time dashboard wi
 | Display | 1.54" TFT SPI ST7789 (240x240) |
 | Connection | SPI |
 
+Display: 1.54": https://a.aliexpress.com/_EG9y7wc
+
+ESP32-S3 SuperMini: https://a.aliexpress.com/_Eyk9GdA
+
 ### Default Wiring
 
 | Display Pin | ESP32-S3 GPIO |
