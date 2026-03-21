@@ -38,6 +38,16 @@
 
 - **Pong clock text size bug** - switching from Pong clock to printer dashboard no longer shows garbled oversized text (tft.setTextSize was not reset)
 - **ETA fallback fix** - ETA display no longer intermittently falls back to "Remaining: Xh XXm" after DST implementation (race condition in getLocalTime with timeout 0)
+- **Finish buzzer repeating on rotation** - buzzer no longer replays the "print finished" sound every time the display rotates back to a finished printer (per-printer flag, reset on next print start)
+- **Gauge text cache overflow** - increased cache from 8 to 12 slots to cover all screen layouts (printing: 6, idle: 2, finished: 2), preventing occasional gauge flicker on screen transitions
+- **Gauge text cache null-terminator** - fixed missing null-terminator in force-redraw path that could cause stale text comparison reads past buffer
+- **Smooth animation float comparison** - replaced exact float != with epsilon-based comparison to prevent edge-case animation jitter
+
+## Code quality improvements
+
+- **MQTT parser bounds checks** - added payload boundary validation to whitespace-skip loops after memmem() raw scans (extruder, ams, vt_tray parsing)
+- **Safe string copies** - replaced strcpy/strncpy with strlcpy for gcodeState initialization and gauge text cache
+- **Goto removal** - refactored goto wifi_fallback in bottom status bar to a helper function
 
 ## Build stats
 

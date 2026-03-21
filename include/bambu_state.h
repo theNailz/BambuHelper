@@ -53,6 +53,7 @@ struct BambuState {
   bool dualNozzle;            // H2D/H2C dual extruder detected
   uint8_t activeNozzle;       // 0=left, 1=right (only when dualNozzle)
   unsigned long lastUpdate;   // millis() of last MQTT message
+  bool finishBuzzerPlayed;    // true after FINISH buzzer played (reset on next print)
   AmsState ams;               // AMS tray data
 };
 

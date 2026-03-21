@@ -158,6 +158,8 @@ static MqttConn* findConnBySerial(const char* serial, size_t serialLen) {
 // ---------------------------------------------------------------------------
 static void parseMqttPayload(byte* payload, unsigned int length,
                              BambuState& s, MqttDiag& diag, unsigned long& idleSince) {
+  const char* payloadEnd = (const char*)payload + length;
+
   // Filter document to reduce parse memory
   JsonDocument filter;
   JsonObject pf = filter["print"].to<JsonObject>();
@@ -194,8 +196,8 @@ static void parseMqttPayload(byte* payload, unsigned int length,
   if (extPos) {
     const char* objStart = extPos + 11;  // skip past "extruder":
     // Skip whitespace
-    while (*objStart == ' ' || *objStart == '\t') objStart++;
-    if (*objStart == '{') {
+    while (objStart < payloadEnd && (*objStart == ' ' || *objStart == '\t')) objStart++;
+    if (objStart < payloadEnd && *objStart == '{') {
       JsonDocument extDoc;
       if (!deserializeJson(extDoc, objStart)) {
         JsonArray info = extDoc["info"];
@@ -237,8 +239,8 @@ static void parseMqttPayload(byte* payload, unsigned int length,
       const char* f = (const char*)memmem(search, rem, "\"ams\":", 6);
       if (!f) break;
       const char* v = f + 6;
-      while (*v == ' ' || *v == '\n' || *v == '\r' || *v == '\t') v++;
-      if (*v == '{') { amsObj = v; break; }
+      while (v < payloadEnd && (*v == ' ' || *v == '\n' || *v == '\r' || *v == '\t')) v++;
+      if (v < payloadEnd && *v == '{') { amsObj = v; break; }
       search = f + 6;
       rem = length - (search - (const char*)payload);
     }
@@ -307,8 +309,8 @@ static void parseMqttPayload(byte* payload, unsigned int length,
     const char* vtPos = (const char*)memmem(payload, length, "\"vt_tray\":", 10);
     if (vtPos) {
       const char* v = vtPos + 10;
-      while (*v == ' ' || *v == '\n' || *v == '\r' || *v == '\t') v++;
-      if (*v == '{') {
+      while (v < payloadEnd && (*v == ' ' || *v == '\n' || *v == '\r' || *v == '\t')) v++;
+      if (v < payloadEnd && *v == '{') {
         JsonDocument vtDoc;
         if (!deserializeJson(vtDoc, v)) {
           if (vtDoc["tray_type"].is<const char*>()) {
@@ -725,7 +727,7 @@ void initBambuMqtt() {
 
     BambuState& s = printers[i].state;
     memset(&s, 0, sizeof(BambuState));
-    strcpy(s.gcodeState, "UNKNOWN");
+    strlcpy(s.gcodeState, "UNKNOWN", sizeof(s.gcodeState));
 
     if (isPrinterConfigured(i)) {
       c.active = true;

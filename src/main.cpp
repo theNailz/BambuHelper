@@ -168,12 +168,16 @@ void loop() {
         setScreenState(SCREEN_PRINTING);
         finishScreenStart = 0;
       }
+      s.finishBuzzerPlayed = false;  // reset for next finish event
     } else if (s.connected && !s.printing &&
                strcmp(s.gcodeState, "FINISH") == 0) {
       if (current != SCREEN_FINISHED && current != SCREEN_OFF && current != SCREEN_CLOCK) {
         setScreenState(SCREEN_FINISHED);
         finishScreenStart = millis();
-        buzzerPlay(BUZZ_PRINT_FINISHED);
+        if (!s.finishBuzzerPlayed) {
+          buzzerPlay(BUZZ_PRINT_FINISHED);
+          s.finishBuzzerPlayed = true;
+        }
       }
       // Only turn off/clock after timeout if NO printer is still printing
       if (current == SCREEN_FINISHED && !dpSettings.keepDisplayOn &&

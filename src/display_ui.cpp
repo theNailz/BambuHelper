@@ -62,11 +62,12 @@ static bool tickGaugeSmooth(const BambuState& s, bool snap) {
   smoothLerp(smoothAuxFan,     (float)s.auxFanPct);
   smoothLerp(smoothChamberFan, (float)s.chamberFanPct);
 
-  return (smoothNozzleTemp != s.nozzleTemp) ||
-         (smoothBedTemp    != s.bedTemp) ||
-         (smoothPartFan    != (float)s.coolingFanPct) ||
-         (smoothAuxFan     != (float)s.auxFanPct) ||
-         (smoothChamberFan != (float)s.chamberFanPct);
+  const float ANIM_EPS = 0.01f;
+  return (fabsf(smoothNozzleTemp - s.nozzleTemp) > ANIM_EPS) ||
+         (fabsf(smoothBedTemp    - s.bedTemp)    > ANIM_EPS) ||
+         (fabsf(smoothPartFan    - (float)s.coolingFanPct) > ANIM_EPS) ||
+         (fabsf(smoothAuxFan     - (float)s.auxFanPct)     > ANIM_EPS) ||
+         (fabsf(smoothChamberFan - (float)s.chamberFanPct) > ANIM_EPS);
 }
 
 // ---------------------------------------------------------------------------
@@ -456,6 +457,17 @@ static void drawIdle() {
 }
 
 // ---------------------------------------------------------------------------
+//  Helper: draw WiFi signal indicator in bottom-left corner
+// ---------------------------------------------------------------------------
+static void drawWifiSignalIndicator(const BambuState& s) {
+  tft.setTextDatum(ML_DATUM);
+  tft.setTextColor(CLR_TEXT_DIM, CLR_BG);
+  char wifiBuf[16];
+  snprintf(wifiBuf, sizeof(wifiBuf), "%ddBm", s.wifiSignal);
+  tft.drawString(wifiBuf, 4, 232);
+}
+
+// ---------------------------------------------------------------------------
 //  Screen: Printing (main dashboard)
 //  Layout: LED bar | header | 2x3 gauge grid | info line
 // ---------------------------------------------------------------------------
@@ -660,7 +672,7 @@ static void drawPrinting() {
         tft.setTextColor(CLR_TEXT_DIM, CLR_BG);
         tft.drawString(t.type, 19, 232);
       } else {
-        goto wifi_fallback;
+        drawWifiSignalIndicator(s);
       }
     } else if (s.ams.vtPresent && s.ams.activeTray == 254) {
       tft.drawCircle(10, 232, 5, CLR_TEXT_DARK);
@@ -669,12 +681,7 @@ static void drawPrinting() {
       tft.setTextColor(CLR_TEXT_DIM, CLR_BG);
       tft.drawString(s.ams.vtType, 19, 232);
     } else {
-      wifi_fallback:
-      tft.setTextDatum(ML_DATUM);
-      tft.setTextColor(CLR_TEXT_DIM, CLR_BG);
-      char wifiBuf[16];
-      snprintf(wifiBuf, sizeof(wifiBuf), "%ddBm", s.wifiSignal);
-      tft.drawString(wifiBuf, 4, 232);
+      drawWifiSignalIndicator(s);
     }
 
     // Layer count (center)

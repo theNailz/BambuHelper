@@ -160,7 +160,7 @@ static void clearGaugeCenter(TFT_eSPI& tft, int16_t cx, int16_t cy,
 // ---------------------------------------------------------------------------
 //  Text cache — only clear+redraw gauge text when displayed string changes
 // ---------------------------------------------------------------------------
-#define GAUGE_CACHE_SLOTS 8
+#define GAUGE_CACHE_SLOTS 12
 
 struct GaugeTextCache {
   int16_t cx, cy;
@@ -190,15 +190,15 @@ static bool gaugeTextChanged(int16_t cx, int16_t cy, const char* main,
                              const char* sub, bool force) {
   if (force) {
     GaugeTextCache* c = gaugeCache(cx, cy);
-    if (c) { strncpy(c->main, main, 11); strncpy(c->sub, sub, 11); }
+    if (c) { strlcpy(c->main, main, sizeof(c->main)); strlcpy(c->sub, sub, sizeof(c->sub)); }
     return true;
   }
   GaugeTextCache* c = gaugeCache(cx, cy);
   if (!c) return true;
   bool changed = (strcmp(c->main, main) != 0) || (strcmp(c->sub, sub) != 0);
   if (changed) {
-    strncpy(c->main, main, 11); c->main[11] = '\0';
-    strncpy(c->sub, sub, 11); c->sub[11] = '\0';
+    strlcpy(c->main, main, sizeof(c->main));
+    strlcpy(c->sub, sub, sizeof(c->sub));
   }
   return changed;
 }
