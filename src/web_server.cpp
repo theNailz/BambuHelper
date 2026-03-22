@@ -1454,8 +1454,9 @@ static void handleSettingsExport() {
 //  Settings import (JSON upload)
 // ---------------------------------------------------------------------------
 static String settingsImportBuf;
-static bool   otaInProgress = false;
-static String otaError      = "";
+static bool   otaInProgress  = false;
+static bool   otaFirstChunk  = false;
+static String otaError       = "";
 
 static void gaugeColorsFromJson(JsonObject obj, GaugeColors& gc) {
   if (obj["arc"].is<const char*>())   gc.arc   = htmlToRgb565(obj["arc"]);
@@ -1605,6 +1606,7 @@ static void handleOtaUpload() {
   if (upload.status == UPLOAD_FILE_START) {
     otaError = "";
     otaInProgress = true;
+    otaFirstChunk = true;
     Serial.printf("OTA: start, file=%s\n", upload.filename.c_str());
 
     disconnectBambuMqtt();
@@ -1619,11 +1621,14 @@ static void handleOtaUpload() {
     if (!otaInProgress) return;
 
     // Validate ESP32 magic byte on first chunk
-    if (Update.progress() == 0 && upload.currentSize > 0 && upload.buf[0] != 0xE9) {
-      otaError = "Invalid firmware file";
-      Update.abort();
-      otaInProgress = false;
-      return;
+    if (otaFirstChunk && upload.currentSize > 0) {
+      otaFirstChunk = false;
+      if (upload.buf[0] != 0xE9) {
+        otaError = "Invalid firmware file";
+        Update.abort();
+        otaInProgress = false;
+        return;
+      }
     }
 
     if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
