@@ -26,7 +26,7 @@ struct MqttConn {
   unsigned long connectTime;
   bool initialPushallSent;
   unsigned long idleSince;
-  bool active;           // connection slot in use
+  bool active;           // connection slot in use 
   uint16_t consecutiveFails;  // for exponential backoff
   unsigned long disconnectSince;  // grace period before showing "connecting" screen
   bool wasConnected;              // track connected->disconnected transitions for logging
@@ -275,6 +275,8 @@ static void parseMqttPayload(byte* payload, unsigned int length,
 
           if (amsDoc["tray_now"].is<const char*>())
             s.ams.activeTray = atoi(amsDoc["tray_now"].as<const char*>());
+
+          // tray_now only present in pushall, not deltas
 
           JsonArray units = amsDoc["ams"];
           for (JsonObject unit : units) {

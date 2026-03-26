@@ -28,7 +28,7 @@ static BambuState prevState;
 static unsigned long connectScreenStart = 0;
 
 // ---------------------------------------------------------------------------
-//  Smooth gauge interpolation — values lerp toward MQTT actuals each frame
+//  Smooth gauge interpolation - values lerp toward MQTT actuals each frame
 // ---------------------------------------------------------------------------
 static float smoothNozzleTemp = 0;
 static float smoothBedTemp    = 0;
@@ -90,6 +90,13 @@ void initDisplay() {
   Serial.flush();
   tft.init();  // TFT_eSPI configures SPI from build flags
   Serial.println("Display: tft.init() done");
+#if defined(DISPLAY_CYD)
+  // Clear entire GRAM at rotation 0 first (guarantees all 240x320 pixels
+  // are addressed). Without this, rotations 1/3 leave 80px of uninitialized
+  // VRAM visible as garbage noise on the extra screen edge.
+  tft.setRotation(0);
+  tft.fillScreen(TFT_BLACK);
+#endif
   tft.setRotation(dispSettings.rotation);
   Serial.println("Display: setRotation done");
   tft.fillScreen(CLR_BG);
@@ -121,6 +128,11 @@ void initDisplay() {
 }
 
 void applyDisplaySettings() {
+#if defined(DISPLAY_CYD)
+  // Pre-clear entire GRAM at rotation 0 to prevent garbage on edges
+  tft.setRotation(0);
+  tft.fillScreen(TFT_BLACK);
+#endif
   tft.setRotation(dispSettings.rotation);
   tft.fillScreen(dispSettings.bgColor);
   forceRedraw = true;
@@ -439,7 +451,7 @@ static void drawIdle() {
     tft.setTextFont(2);
     tft.setTextDatum(BC_DATUM);
 
-    if (s.ams.present && s.ams.activeTray < AMS_MAX_TRAYS && s.ams.trays[s.ams.activeTray].present) {
+    if (!s.dualNozzle && s.ams.present && s.ams.activeTray < AMS_MAX_TRAYS && s.ams.trays[s.ams.activeTray].present) {
       AmsTray& t = s.ams.trays[s.ams.activeTray];
       int cx = SCREEN_W / 2 - tft.textWidth(t.type) / 2 - 8;
       tft.drawCircle(cx, SCREEN_H - 8, 5, CLR_TEXT_DARK);
@@ -540,9 +552,11 @@ static void drawAmsZone(const BambuState& s, bool force) {
       int16_t gy = startY + u * (actualGroupH + groupGap);
 
       // AMS label at top of group
-      char label[2] = { (char)('A' + u), '\0' };
+      char label[6];
+      snprintf(label, sizeof(label), "AMS %c", 'A' + u);
       tft.setTextDatum(MC_DATUM);
-      tft.setTextFont(1);
+      bool sm = dispSettings.smallLabels;
+      tft.setTextFont(sm ? 1 : 2);
       tft.setTextColor(CLR_TEXT_DIM, CLR_BG);
       tft.drawString(label, LY_LAND_AMS_X + LY_LAND_AMS_W / 2, gy + labelH / 2);
 
@@ -587,11 +601,13 @@ static void drawAmsZone(const BambuState& s, bool force) {
                        s.ams.trays[trayIdx], trayIdx == s.ams.activeTray);
       }
 
-      char label[2] = { (char)('A' + u), '\0' };
-      tft.setTextDatum(MC_DATUM);
-      tft.setTextFont(1);
+      char label[6];
+      snprintf(label, sizeof(label), "AMS %c", 'A' + u);
+      tft.setTextDatum(TC_DATUM);
+      bool sm = dispSettings.smallLabels;
+      tft.setTextFont(sm ? 1 : 2);
       tft.setTextColor(CLR_TEXT_DIM, CLR_BG);
-      tft.drawString(label, groupX + actualGroupW / 2, labelY);
+      tft.drawString(label, groupX + actualGroupW / 2, labelY + 2);
     }
   }
 }
@@ -659,9 +675,19 @@ static void drawPrinting() {
   const int16_t eff_botCY    = LY_BOT_CY;
 #endif
 
-  // === Clear extended area on CYD (fix garbage pixels below gauges) ===
+  // === CYD: clear unused zone on screen transitions ===
 #if defined(DISPLAY_CYD)
-  if (forceRedraw) tft.fillRect(0, 180, SCREEN_W, LY_H - 180, CLR_BG);
+  if (forceRedraw) {
+    int16_t scrW = (int16_t)tft.width();
+    int16_t scrH = (int16_t)tft.height();
+    // Clear right edge if canvas wider than 240 (rotation 1/3)
+    if (scrW > 240)
+      tft.fillRect(240, 0, scrW - 240, scrH, CLR_BG);
+    // Clear below content area if canvas taller than used
+    int16_t usedBottom = eff_botY + eff_botH;
+    if (usedBottom < scrH)
+      tft.fillRect(0, usedBottom, scrW, scrH - usedBottom, CLR_BG);
+  }
 #endif
 
   // === H2-style LED progress bar (y=0-5) ===
@@ -829,7 +855,9 @@ static void drawPrinting() {
     tft.setTextFont(2);
 
     // Left: filament indicator (if AMS active) or WiFi signal
-    if (s.ams.present && s.ams.activeTray < AMS_MAX_TRAYS) {
+    // Dual nozzle (H2C/H2D): tray_now is unreliable (reports left nozzle only),
+    // so skip tray info and show WiFi signal instead
+    if (!s.dualNozzle && s.ams.present && s.ams.activeTray < AMS_MAX_TRAYS) {
       AmsTray& t = s.ams.trays[s.ams.activeTray];
       if (t.present) {
         tft.drawCircle(10, eff_botCY, 5, CLR_TEXT_DARK);
@@ -840,7 +868,7 @@ static void drawPrinting() {
       } else {
         drawWifiSignalIndicator(s, eff_botCY);
       }
-    } else if (s.ams.vtPresent && s.ams.activeTray == 254) {
+    } else if (!s.dualNozzle && s.ams.vtPresent && s.ams.activeTray == 254) {
       tft.drawCircle(10, eff_botCY, 5, CLR_TEXT_DARK);
       tft.fillCircle(10, eff_botCY, 4, s.ams.vtColorRgb565);
       tft.setTextDatum(ML_DATUM);
