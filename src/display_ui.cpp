@@ -451,7 +451,7 @@ static void drawIdle() {
     tft.setTextFont(2);
     tft.setTextDatum(BC_DATUM);
 
-    if (!s.dualNozzle && s.ams.present && s.ams.activeTray < AMS_MAX_TRAYS && s.ams.trays[s.ams.activeTray].present) {
+    if (s.ams.present && s.ams.activeTray < AMS_MAX_TRAYS && s.ams.trays[s.ams.activeTray].present) {
       AmsTray& t = s.ams.trays[s.ams.activeTray];
       int cx = SCREEN_W / 2 - tft.textWidth(t.type) / 2 - 8;
       tft.drawCircle(cx, SCREEN_H - 8, 5, CLR_TEXT_DARK);
@@ -855,9 +855,8 @@ static void drawPrinting() {
     tft.setTextFont(2);
 
     // Left: filament indicator (if AMS active) or WiFi signal
-    // Dual nozzle (H2C/H2D): tray_now is unreliable (reports left nozzle only),
-    // so skip tray info and show WiFi signal instead
-    if (!s.dualNozzle && s.ams.present && s.ams.activeTray < AMS_MAX_TRAYS) {
+    // Dual nozzle (H2C/H2D): activeTray set from extruder.info[].snow per-nozzle
+    if (s.ams.present && s.ams.activeTray < AMS_MAX_TRAYS) {
       AmsTray& t = s.ams.trays[s.ams.activeTray];
       if (t.present) {
         tft.drawCircle(10, eff_botCY, 5, CLR_TEXT_DARK);
@@ -868,7 +867,7 @@ static void drawPrinting() {
       } else {
         drawWifiSignalIndicator(s, eff_botCY);
       }
-    } else if (!s.dualNozzle && s.ams.vtPresent && s.ams.activeTray == 254) {
+    } else if (s.ams.vtPresent && s.ams.activeTray == 254) {
       tft.drawCircle(10, eff_botCY, 5, CLR_TEXT_DARK);
       tft.fillCircle(10, eff_botCY, 4, s.ams.vtColorRgb565);
       tft.setTextDatum(ML_DATUM);

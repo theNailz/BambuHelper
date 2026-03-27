@@ -226,13 +226,25 @@ static void parseMqttPayload(byte* payload, unsigned int length,
           for (JsonObject entry : info) {
             if (!entry["id"].is<int>()) continue;
             uint8_t id = entry["id"].as<int>();
+
+            // Extract snow (per-nozzle active tray) for debug and active nozzle
+            if (entry["snow"].is<unsigned int>()) {
+              uint32_t snow = entry["snow"].as<unsigned int>();
+              uint8_t amsIdx  = snow >> 8;
+              uint8_t trayIdx = snow & 0x03;
+              uint8_t trayFlat = amsIdx * AMS_TRAYS_PER_UNIT + trayIdx;
+              MQTT_LOG("nozzle[%d] snow=%u -> ams=%d tray=%d (flat=%d)", id, snow, amsIdx, trayIdx, trayFlat);
+              if (id == s.activeNozzle) {
+                s.ams.activeTray = trayFlat;
+              }
+            }
+
             if (id == s.activeNozzle && entry["temp"].is<unsigned int>()) {
               uint32_t packed = entry["temp"].as<unsigned int>();
               s.nozzleTemp   = (float)(packed & 0xFFFF);
               s.nozzleTarget = (float)(packed >> 16);
               s.lastUpdate = millis();
               MQTT_LOG("dual nozzle=%d temp=%.0f target=%.0f", s.activeNozzle, s.nozzleTemp, s.nozzleTarget);
-              break;
             }
           }
         }

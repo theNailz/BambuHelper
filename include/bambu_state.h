@@ -51,7 +51,7 @@ struct BambuState {
   int8_t wifiSignal;          // RSSI in dBm
   uint8_t speedLevel;         // 1=silent, 2=standard, 3=sport, 4=ludicrous
   bool dualNozzle;            // H2D/H2C dual extruder detected
-  uint8_t activeNozzle;       // 0=left, 1=right (only when dualNozzle)
+  uint8_t activeNozzle;       // 0=right, 1=left (only when dualNozzle)
   unsigned long lastUpdate;   // millis() of last MQTT message
   bool finishBuzzerPlayed;    // true after FINISH buzzer played (reset on next print)
   AmsState ams;               // AMS tray data
