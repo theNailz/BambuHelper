@@ -60,9 +60,9 @@
 #define LY_LAND_AMS_BOT     236   // near bottom edge
 
 // --- Printing: ETA / info zone (moved down for 320px) ---
-#define LY_ETA_Y        250
+#define LY_ETA_Y        260
 #define LY_ETA_H        30
-#define LY_ETA_TEXT_Y   267
+#define LY_ETA_TEXT_Y   277
 
 // --- Printing: bottom status bar (anchored to bottom) ---
 #define LY_BOT_Y    298

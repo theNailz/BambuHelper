@@ -1,6 +1,13 @@
 #include "button.h"
 #include "settings.h"
-#ifdef TOUCH_CS
+
+#if defined(USE_XPT2046)
+  #include <SPI.h>
+  #include <XPT2046_Touchscreen.h>
+  static SPIClass touchSPI(HSPI);
+  static XPT2046_Touchscreen ts(TOUCH_CS, TOUCH_IRQ);
+  static bool touchReady = false;
+#elif defined(TOUCH_CS)
   #include "display_ui.h"  // extern tft for getTouch()
 #endif
 
@@ -11,7 +18,16 @@ static const unsigned long DEBOUNCE_MS = 50;
 
 void initButton() {
   if (buttonType == BTN_DISABLED) return;
-  if (buttonType == BTN_TOUCHSCREEN) return;  // TFT_eSPI handles SPI
+#if defined(USE_XPT2046)
+  if (buttonType == BTN_TOUCHSCREEN) {
+    touchSPI.begin(TOUCH_CLK, TOUCH_MISO, TOUCH_MOSI, TOUCH_CS);
+    ts.begin(touchSPI);
+    touchReady = true;
+    Serial.println("XPT2046 touch initialized (separate SPI)");
+    return;
+  }
+#endif
+  if (buttonType == BTN_TOUCHSCREEN) return;
   if (buttonPin == 0) return;
   if (buttonType == BTN_PUSH) {
     pinMode(buttonPin, INPUT_PULLUP);
@@ -28,7 +44,10 @@ bool wasButtonPressed() {
 
   bool raw;
   if (buttonType == BTN_TOUCHSCREEN) {
-#ifdef TOUCH_CS
+#if defined(USE_XPT2046)
+    if (!touchReady) return false;
+    raw = ts.touched();
+#elif defined(TOUCH_CS)
     uint16_t tx, ty;
     raw = tft.getTouch(&tx, &ty);
 #else
