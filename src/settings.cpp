@@ -17,6 +17,7 @@ char cloudEmail[64] = {0};
 ButtonType buttonType = BTN_DISABLED;
 uint8_t buttonPin = BUTTON_DEFAULT_PIN;
 BuzzerSettings buzzerSettings = { false, BUZZER_DEFAULT_PIN, 0, 0 };
+TasmotaSettings tasmotaSettings = { false, "", 0, 30 };
 
 static Preferences prefs;
 
@@ -289,6 +290,14 @@ void loadSettings() {
   // Cloud email (display only)
   strlcpy(cloudEmail, prefs.getString("cl_email", "").c_str(), sizeof(cloudEmail));
 
+  // Tasmota power monitoring
+  tasmotaSettings.enabled = prefs.getBool("tsm_en", false);
+  strlcpy(tasmotaSettings.ip, prefs.getString("tsm_ip", "").c_str(), sizeof(tasmotaSettings.ip));
+  tasmotaSettings.displayMode = prefs.getUChar("tsm_dm", 0);
+  tasmotaSettings.pollInterval = prefs.getUChar("tsm_pi", 30);
+  if (tasmotaSettings.pollInterval < 10 || tasmotaSettings.pollInterval > 30)
+    tasmotaSettings.pollInterval = 30;
+
   prefs.end();
 }
 
@@ -344,6 +353,12 @@ void saveSettings() {
   prefs.putUChar("dp_nend", dpSettings.nightEndHour);
   prefs.putUChar("dp_nbright", dpSettings.nightBrightness);
   prefs.putUChar("dp_ssbright", dpSettings.screensaverBrightness);
+
+  // Tasmota power monitoring
+  prefs.putBool("tsm_en", tasmotaSettings.enabled);
+  prefs.putString("tsm_ip", tasmotaSettings.ip);
+  prefs.putUChar("tsm_dm", tasmotaSettings.displayMode);
+  prefs.putUChar("tsm_pi", tasmotaSettings.pollInterval);
 
   prefs.end();
 }

@@ -67,6 +67,14 @@ struct BuzzerSettings {
   uint8_t quietEndHour;     // quiet hours end (0-23)
 };
 
+// Tasmota smart plug power monitoring
+struct TasmotaSettings {
+  bool    enabled;
+  char    ip[16];
+  uint8_t displayMode;   // 0=alternate layers/power every 4s, 1=always show power
+  uint8_t pollInterval;  // poll interval in seconds (10-30)
+};
+
 extern char wifiSSID[33];
 extern char wifiPass[65];
 extern uint8_t brightness;
@@ -76,6 +84,7 @@ extern DisplayPowerSettings dpSettings;
 extern ButtonType buttonType;
 extern uint8_t buttonPin;
 extern BuzzerSettings buzzerSettings;
+extern TasmotaSettings tasmotaSettings;
 
 void loadSettings();
 void saveSettings();

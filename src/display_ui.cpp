@@ -9,6 +9,7 @@
 #include "bambu_state.h"
 #include "bambu_mqtt.h"
 #include "settings.h"
+#include "tasmota.h"
 #include <WiFi.h>
 #include <time.h>
 
@@ -348,6 +349,9 @@ static void drawConnectingMQTT() {
   }
 }
 
+// Forward declaration (defined after CYD section)
+static void drawWifiSignalIndicator(const BambuState& s, int16_t wifiY);
+
 // ---------------------------------------------------------------------------
 //  Screen: Idle (connected, not printing)
 // ---------------------------------------------------------------------------
@@ -465,25 +469,75 @@ static void drawIdle() {
                   &dispSettings.bed, smoothBedTemp);
   }
 
-  // Bottom: filament indicator or WiFi signal
-  bool bottomChanged = wifiChanged || (s.ams.activeTray != prevState.ams.activeTray);
+  // Bottom status bar: Filament/WiFi | Power | Door
+  static bool     idleAltShowPower    = false;
+  static uint32_t idleAltFlipMs       = 0;
+  static bool     idlePrevAltShowPower = false;
+  static bool     idlePrevTasmotaOnline = false;
+
+  if (tasmotaSettings.enabled && tasmotaSettings.displayMode == 0) {
+    if (millis() - idleAltFlipMs > 4000) {
+      idleAltShowPower = !idleAltShowPower;
+      idleAltFlipMs    = millis();
+    }
+  } else {
+    idleAltShowPower = false;
+    idleAltFlipMs    = 0;
+  }
+  bool idleTasmotaOnline = tasmotaIsOnline();
+
+  int16_t botCY = scrH - 9;
+  bool bottomChanged = wifiChanged ||
+                       (s.ams.activeTray != prevState.ams.activeTray) ||
+                       (s.doorOpen != prevState.doorOpen) ||
+                       (s.doorSensorPresent != prevState.doorSensorPresent) ||
+                       (tasmotaSettings.enabled && (idleAltShowPower != idlePrevAltShowPower ||
+                                                    idleTasmotaOnline != idlePrevTasmotaOnline));
+  idlePrevAltShowPower   = idleAltShowPower;
+  idlePrevTasmotaOnline  = idleTasmotaOnline;
+
   if (bottomChanged) {
     tft.fillRect(0, scrH - 18, scrW, 18, CLR_BG);
     tft.setTextFont(2);
-    tft.setTextDatum(BC_DATUM);
 
+    // Left: filament circle (if AMS active) or WiFi signal
     if (s.ams.present && s.ams.activeTray < AMS_MAX_TRAYS && s.ams.trays[s.ams.activeTray].present) {
       AmsTray& t = s.ams.trays[s.ams.activeTray];
-      int txtCx = cx - tft.textWidth(t.type) / 2 - 8;
-      tft.drawCircle(txtCx, scrH - 8, 5, CLR_TEXT_DARK);
-      tft.fillCircle(txtCx, scrH - 8, 4, t.colorRgb565);
+      tft.drawCircle(10, botCY, 5, CLR_TEXT_DARK);
+      tft.fillCircle(10, botCY, 4, t.colorRgb565);
+      tft.setTextDatum(ML_DATUM);
       tft.setTextColor(CLR_TEXT_DIM, CLR_BG);
-      tft.drawString(t.type, cx + 4, scrH - 2);
+      tft.drawString(t.type, 19, botCY);
+    } else if (s.ams.vtPresent && s.ams.activeTray == 254) {
+      tft.drawCircle(10, botCY, 5, CLR_TEXT_DARK);
+      tft.fillCircle(10, botCY, 4, s.ams.vtColorRgb565);
+      tft.setTextDatum(ML_DATUM);
+      tft.setTextColor(CLR_TEXT_DIM, CLR_BG);
+      tft.drawString(s.ams.vtType, 19, botCY);
     } else {
+      drawWifiSignalIndicator(s, botCY);
+    }
+
+    // Center: power watts (if Tasmota online)
+    bool showPower = idleTasmotaOnline &&
+                     (tasmotaSettings.displayMode == 1 || idleAltShowPower);
+    if (showPower) {
+      drawIcon16(tft, cx - 20, botCY - 8, icon_lightning, CLR_YELLOW);
+      char wBuf[8];
+      snprintf(wBuf, sizeof(wBuf), "%.0fW", tasmotaGetWatts());
+      tft.setTextDatum(ML_DATUM);
       tft.setTextColor(CLR_TEXT_DIM, CLR_BG);
-      char wifiBuf[24];
-      snprintf(wifiBuf, sizeof(wifiBuf), "WiFi: %d dBm", s.wifiSignal);
-      tft.drawString(wifiBuf, cx, scrH - 2);
+      tft.drawString(wBuf, cx - 2, botCY);
+    }
+
+    // Right: door status (if sensor present)
+    if (s.doorSensorPresent) {
+      uint16_t clr = s.doorOpen ? CLR_ORANGE : CLR_GREEN;
+      tft.setTextDatum(MR_DATUM);
+      tft.setTextColor(clr, CLR_BG);
+      tft.drawString("Door", scrW - 20, botCY);
+      drawIcon16(tft, scrW - 18, botCY - 8,
+                 s.doorOpen ? icon_unlock : icon_lock, clr);
     }
   }
 }
@@ -953,7 +1007,24 @@ static void drawPrinting() {
     }
   }
 
-  // === Bottom status bar — Filament/WiFi | Layer | Speed ===
+  // === Bottom status bar — Filament/WiFi | Layer (or Power) | Speed ===
+  // Tasmota alternation state (persists across redraws)
+  static bool     altShowPower    = false;
+  static uint32_t altFlipMs       = 0;
+  static bool     prevAltShowPower = false;
+  static bool     prevTasmotaOnline = false;
+
+  if (tasmotaSettings.enabled && tasmotaSettings.displayMode == 0) {
+    if (millis() - altFlipMs > 4000) {
+      altShowPower = !altShowPower;
+      altFlipMs    = millis();
+    }
+  } else {
+    altShowPower = false;
+    altFlipMs    = 0;
+  }
+  bool tasmotaOnline = tasmotaIsOnline();
+
   bool showingWifi = !(s.ams.present && s.ams.activeTray < AMS_MAX_TRAYS && s.ams.trays[s.ams.activeTray].present)
                   && !(s.ams.vtPresent && s.ams.activeTray == 254);
   bool bottomChanged = forceRedraw ||
@@ -963,7 +1034,11 @@ static void drawPrinting() {
                        (s.layerNum != prevState.layerNum) ||
                        (s.totalLayers != prevState.totalLayers) ||
                        (s.ams.activeTray != prevState.ams.activeTray) ||
-                       (showingWifi && s.wifiSignal != prevState.wifiSignal);
+                       (showingWifi && s.wifiSignal != prevState.wifiSignal) ||
+                       (tasmotaSettings.enabled && (altShowPower != prevAltShowPower || tasmotaOnline != prevTasmotaOnline));
+  prevAltShowPower  = altShowPower;
+  prevTasmotaOnline = tasmotaOnline;
+
   if (bottomChanged) {
     tft.fillRect(0, eff_botY, SCREEN_W, eff_botH, CLR_BG);
     tft.setTextFont(2);
@@ -991,12 +1066,23 @@ static void drawPrinting() {
       drawWifiSignalIndicator(s, eff_botCY);
     }
 
-    // Layer count (center)
-    tft.setTextDatum(MC_DATUM);
-    tft.setTextColor(CLR_TEXT_DIM, CLR_BG);
-    char layerBuf[20];
-    snprintf(layerBuf, sizeof(layerBuf), "L%d/%d", s.layerNum, s.totalLayers);
-    tft.drawString(layerBuf, SCREEN_W / 2, eff_botCY);
+    // Center: power (if Tasmota active) or layer count
+    bool showPowerNow = tasmotaSettings.enabled && tasmotaOnline &&
+                        (tasmotaSettings.displayMode == 1 || altShowPower);
+    if (showPowerNow) {
+      drawIcon16(tft, SCREEN_W / 2 - 20, eff_botCY - 8, icon_lightning, CLR_YELLOW);
+      char wBuf[8];
+      snprintf(wBuf, sizeof(wBuf), "%.0fW", tasmotaGetWatts());
+      tft.setTextDatum(ML_DATUM);
+      tft.setTextColor(CLR_TEXT_DIM, CLR_BG);
+      tft.drawString(wBuf, SCREEN_W / 2 - 2, eff_botCY);
+    } else {
+      tft.setTextDatum(MC_DATUM);
+      tft.setTextColor(CLR_TEXT_DIM, CLR_BG);
+      char layerBuf[20];
+      snprintf(layerBuf, sizeof(layerBuf), "L%d/%d", s.layerNum, s.totalLayers);
+      tft.drawString(layerBuf, SCREEN_W / 2, eff_botCY);
+    }
 
     // Right: door status (if sensor present) or speed mode
     if (s.doorSensorPresent) {
@@ -1113,6 +1199,28 @@ static void drawFinished() {
       strncpy(truncName, s.subtaskName, 25);
       truncName[25] = '\0';
       tft.drawString(truncName, cx, LY_FIN_FILE_Y);
+    }
+  }
+
+  // === kWh used during print (between filename and bottom bar) ===
+  bool kwhChanged = tasmotaSettings.enabled && tasmotaKwhChanged();
+  if (forceRedraw || kwhChanged) {
+    int16_t kwhY = (LY_FIN_FILE_Y + eff_finBotY) / 2;
+    tft.fillRect(0, kwhY - 9, scrW, 18, CLR_BG);
+    if (tasmotaSettings.enabled) {
+      float kwh = tasmotaGetPrintKwhUsed();
+      if (kwh >= 0.0f) {
+        drawIcon16(tft, cx - 32, kwhY - 8, icon_lightning, CLR_YELLOW);
+        char kwhBuf[16];
+        if (kwh < 0.1f)
+          snprintf(kwhBuf, sizeof(kwhBuf), "%.0f Wh", kwh * 1000.0f);
+        else
+          snprintf(kwhBuf, sizeof(kwhBuf), "%.3f kWh", kwh);
+        tft.setTextDatum(ML_DATUM);
+        tft.setTextFont(2);
+        tft.setTextColor(CLR_TEXT_DIM, CLR_BG);
+        tft.drawString(kwhBuf, cx - 14, kwhY);
+      }
     }
   }
 

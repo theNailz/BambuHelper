@@ -9,6 +9,7 @@
 #include "button.h"
 #include "buzzer.h"
 #include "timezones.h"
+#include "tasmota.h"
 #include <WebServer.h>
 #include <ArduinoJson.h>
 #include <Update.h>
@@ -533,7 +534,47 @@ static const char PAGE_HTML[] PROGMEM = R"rawliteral(
   </div>
 </div>
 
-<!-- ===== Section 5: Diagnostics ===== -->
+<!-- ===== Section 5: Power Monitoring ===== -->
+<div class="section" id="s-power">
+  <div class="section-header" onclick="toggleSection('power')">
+    <h2>Power Monitoring</h2>
+    <span class="arrow" id="arr-power">&#9654;</span>
+  </div>
+  <div class="section-content" id="sec-power">
+    <div class="section-body">
+      <p style="font-size:12px;color:#8B949E;margin-bottom:12px">
+        Show live power consumption from a Tasmota smart plug on the display.<br>
+        Replaces or alternates with the layer counter in the bottom status bar.
+      </p>
+      <div class="check-row">
+        <input type="checkbox" id="tsm_en" value="1" %TSM_EN%>
+        <label for="tsm_en">Enable power monitoring</label>
+      </div>
+      <label for="tsm_ip" style="margin-top:12px">Tasmota plug IP address</label>
+      <input type="text" id="tsm_ip" value="%TSM_IP%" placeholder="192.168.1.x" maxlength="15">
+      <label style="margin-top:12px">Display mode</label>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#C9D1D9">
+          <input type="radio" name="tsm_dm" value="0" %TSM_DM0%> Alternate: layer count / watts (every 4s)
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#C9D1D9">
+          <input type="radio" name="tsm_dm" value="1" %TSM_DM1%> Always show watts
+        </label>
+      </div>
+      <label for="tsm_pi" style="margin-top:12px">Poll interval</label>
+      <select id="tsm_pi">
+        <option value="10" %TSM_PI10%>10 seconds</option>
+        <option value="15" %TSM_PI15%>15 seconds</option>
+        <option value="20" %TSM_PI20%>20 seconds</option>
+        <option value="30" %TSM_PI30%>30 seconds</option>
+      </select>
+      <button type="button" class="btn btn-primary" onclick="savePower()">Save Power Settings</button>
+      <div id="powerStatus" style="margin-top:8px;font-size:13px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Section 6: Diagnostics ===== -->
 <div class="section" id="s-diag">
   <div class="section-header" onclick="toggleSection('diag')">
     <h2>Diagnostics</h2>
@@ -743,6 +784,20 @@ function saveRotation(){
     .then(function(r){return r.json();})
     .then(function(d){if(d.status==='ok') showToast('Settings saved');})
     .catch(function(e){showToast('Save failed');console.warn('saveRotation:',e);});
+}
+
+// --- Power monitoring ---
+function savePower(){
+  var p=new URLSearchParams();
+  if(document.getElementById('tsm_en').checked) p.append('tsm_en','1');
+  p.append('tsm_ip',document.getElementById('tsm_ip').value.trim());
+  var dm=document.querySelector('input[name="tsm_dm"]:checked');
+  if(dm) p.append('tsm_dm',dm.value);
+  p.append('tsm_pi',document.getElementById('tsm_pi').value);
+  fetch('/save/power',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:p.toString()})
+    .then(function(r){return r.json();})
+    .then(function(d){if(d.status==='ok') showToast('Power settings saved');})
+    .catch(function(e){showToast('Save failed');console.warn('savePower:',e);});
 }
 
 // --- Display ---
@@ -1136,6 +1191,16 @@ static void processTemplate(String& page) {
   page.replace("%BUZ_QS%", String(buzzerSettings.quietStartHour));
   page.replace("%BUZ_QE%", String(buzzerSettings.quietEndHour));
 
+  // Tasmota power monitoring
+  page.replace("%TSM_EN%", tasmotaSettings.enabled ? "checked" : "");
+  page.replace("%TSM_IP%", tasmotaSettings.ip);
+  page.replace("%TSM_DM0%", tasmotaSettings.displayMode == 0 ? "checked" : "");
+  page.replace("%TSM_DM1%", tasmotaSettings.displayMode == 1 ? "checked" : "");
+  page.replace("%TSM_PI10%", tasmotaSettings.pollInterval == 10 ? "selected" : "");
+  page.replace("%TSM_PI15%", tasmotaSettings.pollInterval == 15 ? "selected" : "");
+  page.replace("%TSM_PI20%", tasmotaSettings.pollInterval == 20 ? "selected" : "");
+  page.replace("%TSM_PI30%", tasmotaSettings.pollInterval == 30 ? "selected" : "");
+
 }
 
 // ---------------------------------------------------------------------------
@@ -1513,6 +1578,24 @@ static void handleSaveRotation() {
 }
 
 // ---------------------------------------------------------------------------
+//  Save Tasmota power monitoring settings
+// ---------------------------------------------------------------------------
+static void handleSavePower() {
+  tasmotaSettings.enabled = server.hasArg("tsm_en");
+  if (server.hasArg("tsm_ip"))
+    strlcpy(tasmotaSettings.ip, server.arg("tsm_ip").c_str(), sizeof(tasmotaSettings.ip));
+  if (server.hasArg("tsm_dm"))
+    tasmotaSettings.displayMode = server.arg("tsm_dm").toInt() ? 1 : 0;
+  if (server.hasArg("tsm_pi")) {
+    uint8_t pi = server.arg("tsm_pi").toInt();
+    if (pi >= 10 && pi <= 30) tasmotaSettings.pollInterval = pi;
+  }
+  saveSettings();
+  tasmotaInit();
+  server.send(200, "application/json", "{\"status\":\"ok\"}");
+}
+
+// ---------------------------------------------------------------------------
 //  Settings export (JSON download)
 // ---------------------------------------------------------------------------
 static void gaugeColorsToJson(JsonObject& obj, const GaugeColors& gc) {
@@ -1871,6 +1954,7 @@ void initWebServer() {
   server.on("/save/wifi", HTTP_POST, handleSaveWifi);
   server.on("/save/printer", HTTP_POST, handleSavePrinter);
   server.on("/save/rotation", HTTP_POST, handleSaveRotation);
+  server.on("/save/power", HTTP_POST, handleSavePower);
   server.on("/buzzer/test", HTTP_POST, handleBuzzerTest);
   server.on("/printer/config", HTTP_GET, handlePrinterConfig);
   server.on("/apply", HTTP_POST, handleApply);

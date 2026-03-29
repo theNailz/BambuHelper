@@ -243,6 +243,26 @@ const uint8_t PROGMEM icon_check_32[] = {
   0x00, 0x00, 0x00, 0x00,  // row 31
 };
 
+// Lightning bolt icon (16x16) - power monitoring indicator
+const uint8_t PROGMEM icon_lightning[] = {
+  0x00, 0x00,  //
+  0x00, 0x00,  //
+  0x07, 0x80,  //     .....####.......  top diagonal (cols 5-8)
+  0x0F, 0x00,  //     ....(####).......
+  0x1E, 0x00,  //     ...(####)........
+  0x3C, 0x00,  //     ..(####).........
+  0x3F, 0xE0,  //     ..(#########)....  wide center bar (cols 2-10)
+  0x00, 0xF8,  //     ........(#####)..  bottom diagonal (cols 8-12)
+  0x01, 0xF0,  //     .......(#####)...
+  0x03, 0xE0,  //     ......(#####)....
+  0x07, 0xC0,  //     .....(#####).....
+  0x0F, 0x80,  //     ....(#####)......
+  0x07, 0x00,  //     .....(###).......  tip (cols 5-7)
+  0x00, 0x00,  //
+  0x00, 0x00,  //
+  0x00, 0x00,  //
+};
+
 // Helper: draw a 16x16 1-bit icon at (x, y) with given color, transparent bg
 inline void drawIcon16(TFT_eSPI& tft, int16_t x, int16_t y,
                        const uint8_t* icon, uint16_t color) {

@@ -331,6 +331,12 @@ When a printer is physically powered off, BambuHelper uses exponential backoff t
 
 When the printer comes back online, the backoff resets to normal immediately.
 
+## Power Monitoring *(initial support, beta)*
+
+| | |
+|---|---|
+| ![Power Monitoring](img/PowerMonitoring.png) | BambuHelper can display live power consumption from a **[Tasmota](https://tasmota.github.io/docs/)-flashed smart plug** connected to your printer. Tasmota is open-source firmware for ESP-based smart plugs that exposes a local HTTP API and MQTT - no cloud required.<br><br>**What it shows:**<br>- Live wattage in the bottom status bar on the idle and printing screens<br>- Total kWh used during the print job, shown on the "Print Complete" screen<br><br>**Setup:** open the web interface, go to **Power Monitoring**, enter the plug's local IP address, set your preferred poll interval (10-30s), and choose whether to alternate the watts display with the layer counter or always show watts.<br><br>**Requirements:** any Tasmota-flashed smart plug with energy monitoring (e.g. Sonoff S31, BlitzWolf BW-SHP6, Nous A1). The plug must be on your local network and reachable from the ESP32. No Tasmota MQTT broker needed - BambuHelper polls the HTTP API directly.<br><br>*This is initial/beta support. Future plans include automatic printer power-off based on nozzle temperature and idle time.* |
+
 ## Troubleshooting
 
 ### WiFi won't connect / drops frequently
