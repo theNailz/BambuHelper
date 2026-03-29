@@ -42,3 +42,43 @@
 
 - **Timers stop when sections are collapsed** - live stats (3s) and diagnostics (5s) polling now only runs when the relevant section is actually open
 - Previously both `setInterval` timers ran continuously from page load regardless of what was visible, wasting bandwidth and ESP32 CPU cycles on long-lived browser sessions
+
+---
+
+> A huge thank you to [@theNailz](https://github.com/theNailz) for yet another round of quality contributions to this release. From security hardening to UX improvements to real bug fixes - the kind of thoughtful, well-tested work that makes this project better for everyone. It means a lot.
+
+---
+
+## Display settings redesign (NEW)
+*contributed by [@theNailz](https://github.com/theNailz) in [#24](https://github.com/Keralots/BambuHelper/pull/24)*
+
+- **Logical sub-sections** in Display settings: Brightness, After Print Completes, Screen, Clock Settings, Gauge Colors
+- **Single "When print finishes" dropdown** replaces the previous combination of timeout input + "keep display on" checkbox + "show clock" checkbox - impossible to create broken combinations, all existing NVS values and export/import work unchanged
+- Custom duration option revealed inline when selected; Breakout clock option automatically disabled when "Keep finish screen on" is chosen
+
+## Fix: clock screen not appearing when finish timeout is 0
+*contributed by [@theNailz](https://github.com/theNailz) in [#23](https://github.com/Keralots/BambuHelper/pull/23)*
+
+- When "Display off after print complete" was set to 0 and "Show clock after print" was enabled, the clock screen was never reached - device stayed on the finish screen permanently
+- Fixed: `finishDisplayMins == 0` now correctly transitions to clock immediately when clock/screensaver is enabled
+
+## Timezone and date format improvements (NEW)
+*contributed by [@theNailz](https://github.com/theNailz) in [#22](https://github.com/Keralots/BambuHelper/pull/22)*
+
+- **Timezone dropdown** restyled to Windows-style format, sorted by UTC offset (e.g. `(UTC+01:00) Amsterdam, Berlin, Rome, Stockholm, Vienna`)
+- Timezone selection now migrates safely across database reorders by matching the stored POSIX TZ string, not the index
+- **Date format selection** - 6 options: DD.MM.YYYY, DD-MM-YYYY, MM/DD/YYYY, YYYY-MM-DD, DD MMM YYYY, MMM DD YYYY
+- Date format applied on the TFT clock screen; persisted in NVS and included in settings export/import
+
+## Brightness slider UX fix
+*contributed by [@theNailz](https://github.com/theNailz) in [#25](https://github.com/Keralots/BambuHelper/pull/25)*
+
+- Night mode and screensaver brightness sliders no longer change the live display brightness while dragging - they only set the stored value for that mode
+- All three brightness sliders now snap in increments of 5 for consistency
+
+## Security hardening
+*contributed by [@theNailz](https://github.com/theNailz) in [#26](https://github.com/Keralots/BambuHelper/pull/26)*
+
+- **Credentials cleared from RAM** before wiping NVS on factory reset (WiFi password, cloud email, access codes, cloud user IDs were previously left in RAM until reboot)
+- **Cloud token zeroed from stack** immediately after MQTT connect
+- **TLS certificate verification** enabled for cloud API calls using the same CA bundle already used for MQTT; falls back to unverified only if the CA handshake fails (protects deployed devices against CA chain rotation)
