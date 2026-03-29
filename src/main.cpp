@@ -8,6 +8,7 @@
 #include "bambu_state.h"
 #include "button.h"
 #include "buzzer.h"
+#include "tasmota.h"
 
 static unsigned long splashEnd = 0;
 static unsigned long finishScreenStart = 0;
@@ -108,6 +109,7 @@ void loop() {
     initBambuMqtt();
     initButton();
     initBuzzer();
+    tasmotaInit();
   }
 
   if (splashEnd > 0) {
@@ -119,6 +121,7 @@ void loop() {
   handleWebServer();
 
   if (isWiFiConnected() && !isAPMode()) {
+    tasmotaLoop(millis());
     if (isAnyPrinterConfigured()) {
       handleBambuMqtt();
       handleRotation();
@@ -169,6 +172,7 @@ void loop() {
       if (current != SCREEN_PRINTING) {
         setScreenState(SCREEN_PRINTING);
         finishScreenStart = 0;
+        tasmotaMarkPrintStart();
       }
       s.finishBuzzerPlayed = false;  // reset for next finish event
       s.doorAcknowledged = false;    // reset door ack for next finish

@@ -1,5 +1,14 @@
 # BambuHelper v2.5 BETA Release Notes
 
+## Power Monitoring via Tasmota (NEW)
+
+- **Live watt display** - shows current power consumption from a Tasmota-flashed smart plug in the bottom status bar, alongside the layer counter
+- **Two display modes**: alternate between layer count and watts every 4 seconds, or always show watts
+- **Configurable poll interval** - HTTP API polling every 10, 15, 20, or 30 seconds (Tasmota HTTP, no MQTT broker required)
+- **Print energy summary** - on the "Print Complete" screen, total kWh consumed during the print job is shown between the filename and the status bar (e.g. `⚡ 0.234 kWh`)
+- Graceful fallback: if the plug is offline or not yet polled, layer count is shown instead - no crashes
+- Configured in a new "Power Monitoring" section in the web UI; disabled by default, zero impact when not configured
+
 ## Screensaver brightness (NEW)
 *contributed by [@theNailz](https://github.com/theNailz) in [#16](https://github.com/Keralots/BambuHelper/pull/16)*
 
