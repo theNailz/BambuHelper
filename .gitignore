@@ -1,6 +1,8 @@
 .pio
 .vscode
 .claude
+CLAUDE.md
+AGENTS.md
 .cache
 *.o
 *.obj
@@ -9,3 +11,9 @@
 !firmware/**/*.bin
 *.map
 tools/pushall_dump.json
+
+# Beads / Dolt files
+.beads/
+.dolt/
+*.db
+.beads-credential-key
