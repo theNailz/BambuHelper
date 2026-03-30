@@ -82,3 +82,10 @@
 - **Credentials cleared from RAM** before wiping NVS on factory reset (WiFi password, cloud email, access codes, cloud user IDs were previously left in RAM until reboot)
 - **Cloud token zeroed from stack** immediately after MQTT connect
 - **TLS certificate verification** enabled for cloud API calls using the same CA bundle already used for MQTT; falls back to unverified only if the CA handshake fails (protects deployed devices against CA chain rotation)
+
+## Fix: false "Ready" screen during cloud printing
+
+- During long prints on cloud-connected printers (H2C/H2D), the screen could occasionally switch to the "Ready" idle view mid-print, showing correct temperatures but no print progress
+- **Root cause**: the Bambu cloud MQTT broker occasionally stops pushing status messages for >5 minutes during steady printing (no state changes). The stale-data timer would then clear the printing state, sending the display to idle
+- **Fix 1**: when the stale timer fires during an active print and MQTT is still connected, a recovery pushall is sent to re-request current printer state. The printing state is only cleared if no response arrives within 30 seconds
+- **Fix 2**: any received MQTT message (AMS updates, extruder data, etc.) now resets the stale timer - previously only messages containing a `print` object did so

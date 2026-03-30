@@ -26,10 +26,11 @@ struct MqttConn {
   unsigned long connectTime;
   bool initialPushallSent;
   unsigned long idleSince;
-  bool active;           // connection slot in use 
+  bool active;           // connection slot in use
   uint16_t consecutiveFails;  // for exponential backoff
   unsigned long disconnectSince;  // grace period before showing "connecting" screen
   bool wasConnected;              // track connected->disconnected transitions for logging
+  unsigned long stalePushallSentMs;  // when recovery pushall was sent on stale detection
 };
 
 static MqttConn conns[MAX_ACTIVE_PRINTERS];
@@ -363,7 +364,8 @@ static void parseMqttPayload(byte* payload, unsigned int length,
 
   JsonObject print = doc["print"];
   if (print.isNull()) {
-    return;  // no print data in this message
+    s.lastUpdate = millis();  // any message keeps the stale timer alive
+    return;
   }
 
   if (mqttDebugLog && print["gcode_state"].is<const char*>()) {
@@ -734,11 +736,25 @@ static void handleConn(MqttConn& c) {
   unsigned long staleMs = isCloudMode(cfg.mode) ? BAMBU_STALE_TIMEOUT * 5 : BAMBU_STALE_TIMEOUT;
   if (s.lastUpdate > 0 && millis() - s.lastUpdate > staleMs) {
     if (s.printing) {
-      s.printing = false;
-      // Also reset gcodeState — otherwise state machine shows SCREEN_IDLE
-      // with "RUNNING" text (2 gauges) instead of SCREEN_PRINTING (6 gauges)
-      strlcpy(s.gcodeState, "IDLE", sizeof(s.gcodeState));
+      if (isConnected && c.stalePushallSentMs == 0) {
+        // Cloud went quiet during printing — request a refresh before clearing state.
+        // Prevents a false "Ready" screen when the broker stops pushing updates mid-print.
+        MQTT_LOG("[%d] stale during print — sending recovery pushall", c.slotIndex);
+        esp_task_wdt_reset();
+        requestPushall(c);
+        c.stalePushallSentMs = millis();
+      } else if (c.stalePushallSentMs == 0 ||
+                 millis() - c.stalePushallSentMs > 30000) {
+        // Not connected, or recovery pushall sent 30s ago with no response — give up
+        s.printing = false;
+        // Also reset gcodeState — otherwise state machine shows SCREEN_IDLE
+        // with "RUNNING" text (2 gauges) instead of SCREEN_PRINTING (6 gauges)
+        strlcpy(s.gcodeState, "IDLE", sizeof(s.gcodeState));
+        c.stalePushallSentMs = 0;
+      }
     }
+  } else {
+    c.stalePushallSentMs = 0;  // fresh data arrived — reset recovery state
   }
 }
 
@@ -814,6 +830,7 @@ void initBambuMqtt() {
     c.consecutiveFails = 0;
     c.disconnectSince = 0;
     c.wasConnected = false;
+    c.stalePushallSentMs = 0;
 
     BambuState& s = printers[i].state;
     memset(&s, 0, sizeof(BambuState));

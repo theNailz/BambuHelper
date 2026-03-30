@@ -3,17 +3,21 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 
-#define TASMOTA_TIMEOUT_MS  3000      // HTTP connect+read timeout
-#define TASMOTA_STALE_MS    90000UL   // consider offline after 90s without data
+#define TASMOTA_TIMEOUT_MS       3000      // HTTP timeout when plug is known-online
+#define TASMOTA_TIMEOUT_FAST_MS   200      // HTTP timeout when plug is offline - fail fast
+#define TASMOTA_STALE_MS        90000UL   // consider offline after 90s without data
+#define TASMOTA_NORMAL_INTERVAL_MS 30000UL // poll every 30s when online
+#define TASMOTA_OFFLINE_RETRY_MS   60000UL // retry every 60s when offline
 
-static float    g_watts             = -1.0f;
-static float    g_todayKwh          = -1.0f;  // kWh today from Tasmota
-static float    g_yesterdayKwh      = -1.0f;  // kWh yesterday from Tasmota
-static float    g_printStartTodayKwh = -1.0f; // Today at print start
-static float    g_printUsedKwh      = -1.0f;  // frozen session kWh at print end
-static uint32_t g_lastUpdateMs      = 0;
-static uint32_t g_nextPollMs        = 0;
-static bool     g_kwhChanged        = false;
+static float    g_watts              = -1.0f;
+static float    g_todayKwh           = -1.0f;  // kWh today from Tasmota
+static float    g_yesterdayKwh       = -1.0f;  // kWh yesterday from Tasmota
+static float    g_printStartTodayKwh = -1.0f;  // Today at print start
+static float    g_printUsedKwh       = -1.0f;  // frozen session kWh at print end
+static uint32_t g_lastUpdateMs       = 0;
+static uint32_t g_nextPollMs         = 0;
+static bool     g_kwhChanged         = false;
+static bool     g_plugOffline        = false;   // true after failed poll; triggers fast-fail + 60s retry
 
 void tasmotaInit() {
   g_watts              = -1.0f;
@@ -24,6 +28,7 @@ void tasmotaInit() {
   g_lastUpdateMs       = 0;
   g_nextPollMs         = 0;
   g_kwhChanged         = false;
+  g_plugOffline        = false;
 }
 
 static void doPoll() {
@@ -33,9 +38,10 @@ static void doPoll() {
   snprintf(url, sizeof(url), "http://%s/cm?cmnd=Status%%2010", tasmotaSettings.ip);
 
   HTTPClient http;
-  http.setTimeout(TASMOTA_TIMEOUT_MS);
+  http.setTimeout(g_plugOffline ? TASMOTA_TIMEOUT_FAST_MS : TASMOTA_TIMEOUT_MS);
   if (!http.begin(url)) {
     Serial.printf("[Tasmota] begin failed: %s\n", url);
+    g_plugOffline = true;
     return;
   }
 
@@ -43,6 +49,7 @@ static void doPoll() {
   if (code != 200) {
     Serial.printf("[Tasmota] HTTP %d from %s\n", code, tasmotaSettings.ip);
     http.end();
+    g_plugOffline = true;
     return;
   }
 
@@ -74,6 +81,7 @@ static void doPoll() {
 
   g_watts        = power.as<float>();
   g_lastUpdateMs = millis();
+  g_plugOffline  = false;
 
   if (!today.isNull()) {
     float newToday = today.as<float>();
@@ -95,7 +103,7 @@ void tasmotaLoop(unsigned long now) {
   if (!tasmotaSettings.enabled) return;
   if ((uint32_t)now >= g_nextPollMs) {
     doPoll();
-    uint32_t intervalMs = (uint32_t)tasmotaSettings.pollInterval * 1000UL;
+    uint32_t intervalMs = g_plugOffline ? TASMOTA_OFFLINE_RETRY_MS : TASMOTA_NORMAL_INTERVAL_MS;
     g_nextPollMs = (uint32_t)now + intervalMs;
   }
 }
@@ -116,12 +124,14 @@ bool tasmotaIsActiveForSlot(uint8_t slot) {
 }
 
 void tasmotaMarkPrintStart() {
+  if (!tasmotaSettings.enabled) return;
   g_printStartTodayKwh = g_todayKwh;  // -1 if not yet polled
   g_printUsedKwh       = -1.0f;
   Serial.printf("[Tasmota] Print start marked, Today=%.3fkWh\n", g_printStartTodayKwh);
 }
 
 void tasmotaMarkPrintEnd() {
+  if (!tasmotaSettings.enabled) return;
   if (g_printStartTodayKwh < 0.0f || g_todayKwh < 0.0f) {
     Serial.println("[Tasmota] Print end: no baseline, skipping");
     return;
