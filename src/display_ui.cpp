@@ -143,6 +143,10 @@ static LGFX_C3 _tft_instance;
 #endif
 
 // Global pointer + reference — accessed via `tft` throughout the codebase
+#ifdef HEADLESS
+lgfx::LGFX_Sprite headlessSprite;
+bool headlessSpriteReady = false;
+#endif
 lgfx::LGFX_Device* tft_ptr = &_tft_instance;
 lgfx::LGFX_Device& tft     = *tft_ptr;
 
@@ -216,7 +220,7 @@ static bool tickGaugeSmooth(const BambuState& s, bool snap) {
 static uint8_t lastAppliedBrightness = 0;
 
 void setBacklight(uint8_t level) {
-#if defined(BACKLIGHT_PIN) && BACKLIGHT_PIN >= 0
+#if defined(BACKLIGHT_PIN) && BACKLIGHT_PIN >= 0 && !defined(HEADLESS)
   analogWrite(BACKLIGHT_PIN, level);
 #endif
   lastAppliedBrightness = level;
@@ -228,12 +232,20 @@ void setBacklight(uint8_t level) {
 void initDisplay() {
   Serial.println("Display: pre-init delay...");
   delay(500);
+#ifndef HEADLESS
   Serial.println("Display: calling tft.init()...");
   tft.init();  // LovyanGFX configures SPI from the board class above
 #if defined(BOARD_IS_S3)
   tft.invertDisplay(true);  // ST7789 on S3 Super Mini requires color inversion
 #endif
   Serial.println("Display: tft.init() done");
+#endif  // HEADLESS
+#ifdef HEADLESS
+  headlessSprite.setColorDepth(16);
+  headlessSprite.createSprite(240, 280);
+  headlessSpriteReady = true;
+  Serial.println("HEADLESS mode: sprite framebuffer ready (240x280)");
+#endif
 #if defined(DISPLAY_CYD)
   // Clear entire GRAM at rotation 0 first (guarantees all 240x320 pixels
   // are addressed). Without this, rotations 1/3 leave 80px of uninitialized
@@ -253,7 +265,7 @@ void initDisplay() {
   Serial.println("Display: touch calibration set");
 #endif
 
-#if defined(BACKLIGHT_PIN) && BACKLIGHT_PIN >= 0
+#if defined(BACKLIGHT_PIN) && BACKLIGHT_PIN >= 0 && !defined(HEADLESS)
   pinMode(BACKLIGHT_PIN, OUTPUT);
   setBacklight(200);
 #endif

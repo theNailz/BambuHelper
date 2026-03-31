@@ -2366,6 +2366,69 @@ void initWebServer() {
   server.on("/ota/auto",   HTTP_POST, handleOtaAuto);
   server.on("/ota/status", HTTP_GET,  handleOtaStatus);
 #endif
+#ifdef HEADLESS
+  server.on("/screenshot", HTTP_GET, []() {
+    extern lgfx::LGFX_Sprite headlessSprite;
+    extern bool headlessSpriteReady;
+    if (!headlessSpriteReady) {
+      server.send(503, "text/plain", "Sprite not ready");
+      return;
+    }
+    int w = headlessSprite.width();
+    int h = headlessSprite.height();
+    // BMP header (54 bytes): BITMAPFILEHEADER + BITMAPINFOHEADER
+    // RGB565 pixels stored as BGR24 in BMP
+    int rowSize = ((w * 3 + 3) & ~3);  // padded to 4-byte boundary
+    int imageSize = rowSize * h;
+    int fileSize = 54 + imageSize;
+    uint8_t* bmp = (uint8_t*)malloc(fileSize);
+    if (!bmp) {
+      server.send(500, "text/plain", "OOM");
+      return;
+    }
+    memset(bmp, 0, 54);
+    // BITMAPFILEHEADER
+    bmp[0] = 'B'; bmp[1] = 'M';
+    bmp[2] = fileSize & 0xFF; bmp[3] = (fileSize >> 8) & 0xFF;
+    bmp[4] = (fileSize >> 16) & 0xFF; bmp[5] = (fileSize >> 24) & 0xFF;
+    bmp[10] = 54;  // pixel data offset
+    // BITMAPINFOHEADER
+    bmp[14] = 40;  // header size
+    bmp[18] = w & 0xFF; bmp[19] = (w >> 8) & 0xFF;
+    // height negative = top-down
+    int negH = -h;
+    bmp[22] = negH & 0xFF; bmp[23] = (negH >> 8) & 0xFF;
+    bmp[24] = (negH >> 16) & 0xFF; bmp[25] = (negH >> 24) & 0xFF;
+    bmp[26] = 1;   // planes
+    bmp[28] = 24;  // bits per pixel (BGR24)
+    bmp[34] = imageSize & 0xFF; bmp[35] = (imageSize >> 8) & 0xFF;
+    bmp[36] = (imageSize >> 16) & 0xFF; bmp[37] = (imageSize >> 24) & 0xFF;
+    // Pixel data: BGR24, top-down (negative height)
+    uint8_t* px = bmp + 54;
+    for (int y = 0; y < h; y++) {
+      uint8_t* row = px + y * rowSize;
+      for (int x = 0; x < w; x++) {
+        uint16_t c = headlessSprite.readPixel(x, y);
+        row[x*3+0] = (c & 0x001F) << 3;        // B
+        row[x*3+1] = ((c >> 5) & 0x3F) << 2;   // G
+        row[x*3+2] = ((c >> 11) & 0x1F) << 3;  // R
+      }
+    }
+    server.setContentLength(fileSize);
+    server.send(200, "image/bmp", "");
+    server.sendContent((const char*)bmp, fileSize);
+    free(bmp);
+  });
+
+  server.on("/display", HTTP_GET, []() {
+    server.send(200, "text/html",
+      "<html><head><title>BambuHelper Display</title>"
+      "<meta http-equiv='refresh' content='2'>"
+      "<style>body{background:#000;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}"
+      "img{image-rendering:pixelated;border:1px solid #333}</style></head>"
+      "<body><img src='/screenshot' width='240' height='280'></body></html>");
+  });
+#endif
   server.onNotFound(handleNotFound);
   server.begin();
   Serial.println("Web server started on port 80");
