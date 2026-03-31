@@ -98,7 +98,6 @@ void initDisplay() {
   Serial.println("Display: pre-init delay...");
   delay(500);
   Serial.println("Display: calling tft.init()...");
-  Serial.flush();
   tft.init();  // TFT_eSPI configures SPI from build flags
   Serial.println("Display: tft.init() done");
 #if defined(DISPLAY_CYD)
