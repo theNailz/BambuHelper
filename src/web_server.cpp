@@ -188,7 +188,7 @@ static const char PAGE_HTML[] PROGMEM = R"rawliteral(
       <div id="printerStatus" class="%STATUS_CLASS%">%STATUS_TEXT%</div>
       <label for="connmode">Connection Mode</label>
       <select id="connmode" onchange="toggleConnMode()">
-        <option value="local" %MODE_LOCAL%>LAN Direct (P1/X1/A1)</option>
+        <option value="local" %MODE_LOCAL%>LAN Mode</option>
         <option value="cloud_all" %MODE_CLOUD_ALL%>Bambu Cloud (All printers)</option>
       </select>
 
