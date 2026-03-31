@@ -12,7 +12,7 @@
 // ---------------------------------------------------------------------------
 static uint16_t spinnerAngle = 0;
 
-void drawSpinner(lgfx::LGFX_Device& tft, int16_t cx, int16_t cy, int16_t radius,
+void drawSpinner(lgfx::LovyanGFX& tft, int16_t cx, int16_t cy, int16_t radius,
                  uint16_t color) {
   // Erase previous arc segment (handle wrap-around)
   uint16_t prevStart = (spinnerAngle + 360 - 12) % 360;
@@ -47,7 +47,7 @@ void drawSpinner(lgfx::LGFX_Device& tft, int16_t cx, int16_t cy, int16_t radius,
 // ---------------------------------------------------------------------------
 //  Animated dots "..."
 // ---------------------------------------------------------------------------
-void drawAnimDots(lgfx::LGFX_Device& tft, int16_t x, int16_t y, uint16_t color) {
+void drawAnimDots(lgfx::LovyanGFX& tft, int16_t x, int16_t y, uint16_t color) {
   unsigned long ms = millis();
   int phase = (ms / 400) % 4;
 
@@ -64,7 +64,7 @@ void drawAnimDots(lgfx::LGFX_Device& tft, int16_t x, int16_t y, uint16_t color) 
 // ---------------------------------------------------------------------------
 //  Indeterminate slide bar — a glowing segment slides back and forth
 // ---------------------------------------------------------------------------
-void drawSlideBar(lgfx::LGFX_Device& tft, int16_t x, int16_t y, int16_t w, int16_t h,
+void drawSlideBar(lgfx::LovyanGFX& tft, int16_t x, int16_t y, int16_t w, int16_t h,
                   uint16_t color, uint16_t trackColor) {
   // Draw track (also erases previous segment position)
   tft.fillRoundRect(x, y, w, h, h / 2, trackColor);
@@ -95,7 +95,7 @@ static unsigned long completionStart = 0;
 static bool completionDone = false;
 static int16_t prevRing = 0;
 
-void drawCompletionAnim(lgfx::LGFX_Device& tft, int16_t cx, int16_t cy, bool reset) {
+void drawCompletionAnim(lgfx::LovyanGFX& tft, int16_t cx, int16_t cy, bool reset) {
   if (reset) {
     completionStart = millis();
     completionDone = false;

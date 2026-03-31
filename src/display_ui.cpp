@@ -146,9 +146,11 @@ static LGFX_C3 _tft_instance;
 #ifdef HEADLESS
 lgfx::LGFX_Sprite headlessSprite;
 bool headlessSpriteReady = false;
+lgfx::LovyanGFX* tft_ptr = &headlessSprite;  // draw into sprite, not hardware
+#else
+lgfx::LovyanGFX* tft_ptr = &_tft_instance;
 #endif
-lgfx::LGFX_Device* tft_ptr = &_tft_instance;
-lgfx::LGFX_Device& tft     = *tft_ptr;
+lgfx::LovyanGFX& tft = *tft_ptr;
 
 // Use user-configured bg color instead of hardcoded CLR_BG
 #undef  CLR_BG
@@ -234,9 +236,9 @@ void initDisplay() {
   delay(500);
 #ifndef HEADLESS
   Serial.println("Display: calling tft.init()...");
-  tft.init();  // LovyanGFX configures SPI from the board class above
+  _tft_instance.init();  // LovyanGFX configures SPI from the board class above
 #if defined(BOARD_IS_S3)
-  tft.invertDisplay(true);  // ST7789 on S3 Super Mini requires color inversion
+  _tft_instance.invertDisplay(true);  // ST7789 on S3 Super Mini requires color inversion
 #endif
   Serial.println("Display: tft.init() done");
 #endif  // HEADLESS

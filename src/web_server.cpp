@@ -2376,48 +2376,41 @@ void initWebServer() {
     }
     int w = headlessSprite.width();
     int h = headlessSprite.height();
-    // BMP header (54 bytes): BITMAPFILEHEADER + BITMAPINFOHEADER
-    // RGB565 pixels stored as BGR24 in BMP
     int rowSize = ((w * 3 + 3) & ~3);  // padded to 4-byte boundary
     int imageSize = rowSize * h;
     int fileSize = 54 + imageSize;
-    uint8_t* bmp = (uint8_t*)malloc(fileSize);
-    if (!bmp) {
-      server.send(500, "text/plain", "OOM");
-      return;
-    }
-    memset(bmp, 0, 54);
-    // BITMAPFILEHEADER
-    bmp[0] = 'B'; bmp[1] = 'M';
-    bmp[2] = fileSize & 0xFF; bmp[3] = (fileSize >> 8) & 0xFF;
-    bmp[4] = (fileSize >> 16) & 0xFF; bmp[5] = (fileSize >> 24) & 0xFF;
-    bmp[10] = 54;  // pixel data offset
-    // BITMAPINFOHEADER
-    bmp[14] = 40;  // header size
-    bmp[18] = w & 0xFF; bmp[19] = (w >> 8) & 0xFF;
-    // height negative = top-down
+
+    // Build 54-byte BMP header
+    uint8_t hdr[54] = {0};
+    hdr[0] = 'B'; hdr[1] = 'M';
+    hdr[2] = fileSize; hdr[3] = fileSize >> 8;
+    hdr[4] = fileSize >> 16; hdr[5] = fileSize >> 24;
+    hdr[10] = 54;
+    hdr[14] = 40;
+    hdr[18] = w; hdr[19] = w >> 8;
     int negH = -h;
-    bmp[22] = negH & 0xFF; bmp[23] = (negH >> 8) & 0xFF;
-    bmp[24] = (negH >> 16) & 0xFF; bmp[25] = (negH >> 24) & 0xFF;
-    bmp[26] = 1;   // planes
-    bmp[28] = 24;  // bits per pixel (BGR24)
-    bmp[34] = imageSize & 0xFF; bmp[35] = (imageSize >> 8) & 0xFF;
-    bmp[36] = (imageSize >> 16) & 0xFF; bmp[37] = (imageSize >> 24) & 0xFF;
-    // Pixel data: BGR24, top-down (negative height)
-    uint8_t* px = bmp + 54;
-    for (int y = 0; y < h; y++) {
-      uint8_t* row = px + y * rowSize;
-      for (int x = 0; x < w; x++) {
-        uint16_t c = headlessSprite.readPixel(x, y);
-        row[x*3+0] = (c & 0x001F) << 3;        // B
-        row[x*3+1] = ((c >> 5) & 0x3F) << 2;   // G
-        row[x*3+2] = ((c >> 11) & 0x1F) << 3;  // R
-      }
-    }
+    hdr[22] = negH; hdr[23] = negH >> 8; hdr[24] = negH >> 16; hdr[25] = negH >> 24;
+    hdr[26] = 1;
+    hdr[28] = 24;
+    hdr[34] = imageSize; hdr[35] = imageSize >> 8;
+    hdr[36] = imageSize >> 16; hdr[37] = imageSize >> 24;
+
+    // Stream: header first, then one row at a time
     server.setContentLength(fileSize);
     server.send(200, "image/bmp", "");
-    server.sendContent((const char*)bmp, fileSize);
-    free(bmp);
+    server.sendContent((const char*)hdr, 54);
+
+    uint8_t rowBuf[((240 * 3 + 3) & ~3)];  // stack buffer for one row
+    for (int y = 0; y < h; y++) {
+      memset(rowBuf, 0, rowSize);
+      for (int x = 0; x < w; x++) {
+        uint16_t c = headlessSprite.readPixel(x, y);
+        rowBuf[x*3+0] = (c & 0x001F) << 3;        // B
+        rowBuf[x*3+1] = ((c >> 5) & 0x3F) << 2;   // G
+        rowBuf[x*3+2] = ((c >> 11) & 0x1F) << 3;  // R
+      }
+      server.sendContent((const char*)rowBuf, rowSize);
+    }
   });
 
   server.on("/display", HTTP_GET, []() {

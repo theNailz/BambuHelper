@@ -6,19 +6,19 @@
 struct GaugeColors;  // forward declaration from settings.h
 
 // Draw H2-style LED progress bar (full-width, top of screen)
-void drawLedProgressBar(lgfx::LGFX_Device& tft, int16_t y, uint8_t progress);
+void drawLedProgressBar(lgfx::LovyanGFX& tft, int16_t y, uint8_t progress);
 
 // Shimmer animation tick — call from loop(), runs at its own cadence
-void tickProgressShimmer(lgfx::LGFX_Device& tft, int16_t y, uint8_t progress, bool printing);
+void tickProgressShimmer(lgfx::LovyanGFX& tft, int16_t y, uint8_t progress, bool printing);
 
 // Draw progress arc with percentage and time in center
-void drawProgressArc(lgfx::LGFX_Device& tft, int16_t cx, int16_t cy, int16_t radius,
+void drawProgressArc(lgfx::LovyanGFX& tft, int16_t cx, int16_t cy, int16_t radius,
                      int16_t thickness, uint8_t progress, uint8_t prevProgress,
                      uint16_t remainingMin, bool forceRedraw);
 
 // Draw temperature arc gauge with current/target
 // arcValue: smooth value for arc position, current: actual value for text display
-void drawTempGauge(lgfx::LGFX_Device& tft, int16_t cx, int16_t cy, int16_t radius,
+void drawTempGauge(lgfx::LovyanGFX& tft, int16_t cx, int16_t cy, int16_t radius,
                    float current, float target, float maxTemp,
                    uint16_t accentColor, const char* label,
                    const uint8_t* icon, bool forceRedraw,
@@ -27,7 +27,7 @@ void drawTempGauge(lgfx::LGFX_Device& tft, int16_t cx, int16_t cy, int16_t radiu
 
 // Draw fan speed gauge (0-100%)
 // arcPercent: smooth value for arc position (-1 = use percent)
-void drawFanGauge(lgfx::LGFX_Device& tft, int16_t cx, int16_t cy, int16_t radius,
+void drawFanGauge(lgfx::LovyanGFX& tft, int16_t cx, int16_t cy, int16_t radius,
                   uint8_t percent, uint16_t accentColor, const char* label,
                   bool forceRedraw, const GaugeColors* colors = nullptr,
                   float arcPercent = -1.0f);

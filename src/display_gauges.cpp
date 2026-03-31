@@ -15,7 +15,7 @@ static inline uint16_t alphaBlend565(uint8_t alpha, uint16_t fg, uint16_t bg) {
 // ---------------------------------------------------------------------------
 //  H2-style LED progress bar
 // ---------------------------------------------------------------------------
-void drawLedProgressBar(lgfx::LGFX_Device& tft, int16_t y, uint8_t progress) {
+void drawLedProgressBar(lgfx::LovyanGFX& tft, int16_t y, uint8_t progress) {
   uint16_t bg = dispSettings.bgColor;
   uint16_t track = dispSettings.trackColor;
 
@@ -59,7 +59,7 @@ static const uint16_t SHIMMER_INTERVAL = 25;  // ms between steps (~40fps)
 static const uint16_t SHIMMER_PAUSE = 1200;   // ms pause between sweeps
 static const int16_t SHIMMER_STEP = 3;       // pixels per step
 
-void tickProgressShimmer(lgfx::LGFX_Device& tft, int16_t y, uint8_t progress, bool printing) {
+void tickProgressShimmer(lgfx::LovyanGFX& tft, int16_t y, uint8_t progress, bool printing) {
   if (!dispSettings.animatedBar || !printing || progress == 0) return;
 
   unsigned long now = millis();
@@ -131,7 +131,7 @@ void tickProgressShimmer(lgfx::LGFX_Device& tft, int16_t y, uint8_t progress, bo
 // ---------------------------------------------------------------------------
 //  Helper: draw arc track + fill, handling decrease properly
 // ---------------------------------------------------------------------------
-static void drawArcFill(lgfx::LGFX_Device& tft, int16_t cx, int16_t cy,
+static void drawArcFill(lgfx::LovyanGFX& tft, int16_t cx, int16_t cy,
                         int16_t radius, int16_t thickness,
                         uint16_t fillEnd, uint16_t fillColor, bool forceRedraw) {
   // Internal angles use TFT_eSPI convention: 0°=bottom (6 o'clock), clockwise.
@@ -174,7 +174,7 @@ static void drawArcFill(lgfx::LGFX_Device& tft, int16_t cx, int16_t cy,
 // ---------------------------------------------------------------------------
 //  Helper: clear gauge center and prepare for text
 // ---------------------------------------------------------------------------
-static void clearGaugeCenter(lgfx::LGFX_Device& tft, int16_t cx, int16_t cy,
+static void clearGaugeCenter(lgfx::LovyanGFX& tft, int16_t cx, int16_t cy,
                              int16_t radius, int16_t thickness) {
   int16_t textR = radius - thickness - 1;
   tft.fillCircle(cx, cy, textR, dispSettings.bgColor);
@@ -239,7 +239,7 @@ void resetGaugeTextCache() {
 // ---------------------------------------------------------------------------
 //  Main progress arc
 // ---------------------------------------------------------------------------
-void drawProgressArc(lgfx::LGFX_Device& tft, int16_t cx, int16_t cy, int16_t radius,
+void drawProgressArc(lgfx::LovyanGFX& tft, int16_t cx, int16_t cy, int16_t radius,
                      int16_t thickness, uint8_t progress, uint8_t prevProgress,
                      uint16_t remainingMin, bool forceRedraw) {
   const uint16_t startAngle = 60;
@@ -292,7 +292,7 @@ void drawProgressArc(lgfx::LGFX_Device& tft, int16_t cx, int16_t cy, int16_t rad
 // ---------------------------------------------------------------------------
 //  Temperature arc gauge
 // ---------------------------------------------------------------------------
-void drawTempGauge(lgfx::LGFX_Device& tft, int16_t cx, int16_t cy, int16_t radius,
+void drawTempGauge(lgfx::LovyanGFX& tft, int16_t cx, int16_t cy, int16_t radius,
                    float current, float target, float maxTemp,
                    uint16_t accentColor, const char* label,
                    const uint8_t* icon, bool forceRedraw,
@@ -350,7 +350,7 @@ void drawTempGauge(lgfx::LGFX_Device& tft, int16_t cx, int16_t cy, int16_t radiu
 // ---------------------------------------------------------------------------
 //  Fan speed gauge (0-100%)
 // ---------------------------------------------------------------------------
-void drawFanGauge(lgfx::LGFX_Device& tft, int16_t cx, int16_t cy, int16_t radius,
+void drawFanGauge(lgfx::LovyanGFX& tft, int16_t cx, int16_t cy, int16_t radius,
                   uint8_t percent, uint16_t accentColor, const char* label,
                   bool forceRedraw, const GaugeColors* colors,
                   float arcPercent) {
