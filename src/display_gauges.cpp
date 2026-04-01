@@ -2,6 +2,7 @@
 #include "config.h"
 #include "layout.h"
 #include "settings.h"
+#include "fonts.h"
 
 // LovyanGFX does not expose alphaBlend() as a member. Provide a compatible
 // helper: alpha=0 → pure bg, alpha=255 → pure fg (same semantics as TFT_eSPI).
@@ -273,16 +274,16 @@ void drawProgressArc(lgfx::LGFX_Device& tft, int16_t cx, int16_t cy, int16_t rad
 
     tft.setTextDatum(MC_DATUM);
     tft.setTextColor(gc.value);
-    tft.setTextFont(compact ? 4 : 6);
+    setFont(tft, FONT_LARGE);
     tft.drawString(pctBuf, cx, cy - (compact ? 4 : 8));
 
-    tft.setTextFont(compact ? 1 : 2);
+    setFont(tft, compact ? FONT_SMALL : FONT_BODY);
     tft.setTextColor(CLR_TEXT_DIM);
     tft.drawString(timeBuf, cx, cy + (compact ? 10 : 18));
 
     if (compact) {
       bool sm = dispSettings.smallLabels;
-      tft.setTextFont(sm ? 1 : 2);
+      setFont(tft, sm ? FONT_SMALL : FONT_BODY);
       tft.setTextColor(gc.label, bg);
       tft.drawString("Progress", cx, cy + radius + (sm ? 3 : -1));
     }
@@ -332,16 +333,16 @@ void drawTempGauge(lgfx::LGFX_Device& tft, int16_t cx, int16_t cy, int16_t radiu
     clearGaugeCenter(tft, cx, cy, radius, thickness);
 
     tft.setTextDatum(MC_DATUM);
-    tft.setTextFont(4);
+    setFont(tft, FONT_LARGE);
     tft.setTextColor(valColor);
     tft.drawString(tempBuf, cx, cy - 4);
 
-    tft.setTextFont(1);
+    setFont(tft, FONT_SMALL);
     tft.setTextColor(CLR_TEXT_DIM);
     tft.drawString(targetBuf, cx, cy + 10);
 
     bool sm = dispSettings.smallLabels;
-    tft.setTextFont(sm ? 1 : 2);
+    setFont(tft, sm ? FONT_SMALL : FONT_BODY);
     tft.setTextColor(lblColor, bg);
     tft.drawString(label, cx, cy + radius + (sm ? 3 : -1));
   }
@@ -386,12 +387,12 @@ void drawFanGauge(lgfx::LGFX_Device& tft, int16_t cx, int16_t cy, int16_t radius
     clearGaugeCenter(tft, cx, cy, radius, thickness);
 
     tft.setTextDatum(MC_DATUM);
-    tft.setTextFont(4);
+    setFont(tft, FONT_LARGE);
     tft.setTextColor(valColor);
     tft.drawString(buf, cx, cy);
 
     bool sm = dispSettings.smallLabels;
-    tft.setTextFont(sm ? 1 : 2);
+    setFont(tft, sm ? FONT_SMALL : FONT_BODY);
     tft.setTextColor(lblColor, bg);
     tft.drawString(label, cx, cy + radius + (sm ? 3 : -1));
   }

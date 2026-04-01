@@ -3,6 +3,7 @@
 #include "settings.h"
 #include "config.h"
 #include "layout.h"
+#include "fonts.h"
 #include <time.h>
 
 static int prevMinute = -1;
@@ -41,13 +42,13 @@ void drawClock() {
     snprintf(timeBuf, sizeof(timeBuf), "%2d:%02d", h, now.tm_min);
   }
   tft.setTextDatum(MC_DATUM);
-  tft.setTextFont(7);
+  setFont(tft, FONT_7SEG);
   tft.setTextColor(CLR_TEXT, bg);
   tft.drawString(timeBuf, LY_W / 2, LY_CLK_TIME_Y);
 
   // AM/PM indicator for 12h mode
   if (!netSettings.use24h) {
-    tft.setTextFont(4);
+    setFont(tft, FONT_LARGE);
     tft.setTextColor(CLR_TEXT_DIM, bg);
     tft.drawString(now.tm_hour < 12 ? "AM" : "PM", LY_W / 2, LY_CLK_AMPM_Y);
   }
@@ -65,7 +66,7 @@ void drawClock() {
     case 5:  snprintf(dateBuf, sizeof(dateBuf), "%s  %s %d, %04d", days[now.tm_wday], months[now.tm_mon], day, year); break;
     default: snprintf(dateBuf, sizeof(dateBuf), "%s  %02d.%02d.%04d", days[now.tm_wday], day, mon, year); break;
   }
-  tft.setTextFont(4);
+  setFont(tft, FONT_LARGE);
   tft.setTextColor(CLR_TEXT_DIM, bg);
   tft.drawString(dateBuf, LY_W / 2, LY_CLK_DATE_Y);
 }
