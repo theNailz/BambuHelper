@@ -244,9 +244,9 @@ void initDisplay() {
 #endif  // HEADLESS
 #ifdef HEADLESS
   headlessSprite.setColorDepth(16);
-  headlessSprite.createSprite(240, 280);
+  headlessSprite.createSprite(LY_W, LY_H);
   headlessSpriteReady = true;
-  Serial.println("HEADLESS mode: sprite framebuffer ready (240x280)");
+  Serial.printf("HEADLESS mode: sprite framebuffer ready (%dx%d)\n", LY_W, LY_H);
 #endif
 #if defined(DISPLAY_CYD)
   // Clear entire GRAM at rotation 0 first (guarantees all 240x320 pixels

@@ -6,6 +6,7 @@
 #include "wifi_manager.h"
 #include "display_ui.h"
 #include "config.h"
+#include "layout.h"
 #include "button.h"
 #include "buzzer.h"
 #include "timezones.h"
@@ -2400,7 +2401,7 @@ void initWebServer() {
     server.send(200, "image/bmp", "");
     server.sendContent((const char*)hdr, 54);
 
-    uint8_t rowBuf[((240 * 3 + 3) & ~3)];  // stack buffer for one row
+    uint8_t rowBuf[((LY_W * 3 + 3) & ~3)];  // stack buffer for one row
     for (int y = 0; y < h; y++) {
       memset(rowBuf, 0, rowSize);
       for (int x = 0; x < w; x++) {
@@ -2414,12 +2415,15 @@ void initWebServer() {
   });
 
   server.on("/display", HTTP_GET, []() {
-    server.send(200, "text/html",
+    char html[350];
+    snprintf(html, sizeof(html),
       "<html><head><title>BambuHelper Display</title>"
       "<meta http-equiv='refresh' content='2'>"
       "<style>body{background:#000;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}"
       "img{image-rendering:pixelated;border:1px solid #333}</style></head>"
-      "<body><img src='/screenshot' width='240' height='280'></body></html>");
+      "<body><img src='/screenshot' width='%d' height='%d'></body></html>",
+      LY_W, LY_H);
+    server.send(200, "text/html", html);
   });
 #endif
   server.onNotFound(handleNotFound);
