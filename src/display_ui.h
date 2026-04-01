@@ -17,9 +17,9 @@ enum ScreenState {
   SCREEN_OTA_UPDATE
 };
 
-extern lgfx::LGFX_Device* tft_ptr;
+extern lgfx::LovyanGFX* tft_ptr;
 // Convenience reference — all callers use `tft.method()` unchanged
-extern lgfx::LGFX_Device& tft;
+extern lgfx::LovyanGFX& tft;
 
 void initDisplay();
 void updateDisplay();

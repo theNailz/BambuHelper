@@ -6,6 +6,7 @@
 #include "wifi_manager.h"
 #include "display_ui.h"
 #include "config.h"
+#include "layout.h"
 #include "button.h"
 #include "buzzer.h"
 #include "timezones.h"
@@ -2365,6 +2366,65 @@ void initWebServer() {
 #ifdef ENABLE_OTA_AUTO
   server.on("/ota/auto",   HTTP_POST, handleOtaAuto);
   server.on("/ota/status", HTTP_GET,  handleOtaStatus);
+#endif
+#ifdef HEADLESS
+  server.on("/screenshot", HTTP_GET, []() {
+    extern lgfx::LGFX_Sprite headlessSprite;
+    extern bool headlessSpriteReady;
+    if (!headlessSpriteReady) {
+      server.send(503, "text/plain", "Sprite not ready");
+      return;
+    }
+    int w = headlessSprite.width();
+    int h = headlessSprite.height();
+    int rowSize = ((w * 3 + 3) & ~3);  // padded to 4-byte boundary
+    int imageSize = rowSize * h;
+    int fileSize = 54 + imageSize;
+
+    // Build 54-byte BMP header
+    uint8_t hdr[54] = {0};
+    hdr[0] = 'B'; hdr[1] = 'M';
+    hdr[2] = fileSize; hdr[3] = fileSize >> 8;
+    hdr[4] = fileSize >> 16; hdr[5] = fileSize >> 24;
+    hdr[10] = 54;
+    hdr[14] = 40;
+    hdr[18] = w; hdr[19] = w >> 8;
+    int negH = -h;
+    hdr[22] = negH; hdr[23] = negH >> 8; hdr[24] = negH >> 16; hdr[25] = negH >> 24;
+    hdr[26] = 1;
+    hdr[28] = 24;
+    hdr[34] = imageSize; hdr[35] = imageSize >> 8;
+    hdr[36] = imageSize >> 16; hdr[37] = imageSize >> 24;
+
+    // Stream: header first, then one row at a time
+    server.setContentLength(fileSize);
+    server.send(200, "image/bmp", "");
+    server.sendContent((const char*)hdr, 54);
+
+    uint8_t rowBuf[((LY_W * 3 + 3) & ~3)];  // stack buffer for one row
+    for (int y = 0; y < h; y++) {
+      memset(rowBuf, 0, rowSize);
+      for (int x = 0; x < w; x++) {
+        uint16_t c = headlessSprite.readPixel(x, y);
+        rowBuf[x*3+0] = (c & 0x001F) << 3;        // B
+        rowBuf[x*3+1] = ((c >> 5) & 0x3F) << 2;   // G
+        rowBuf[x*3+2] = ((c >> 11) & 0x1F) << 3;  // R
+      }
+      server.sendContent((const char*)rowBuf, rowSize);
+    }
+  });
+
+  server.on("/display", HTTP_GET, []() {
+    char html[350];
+    snprintf(html, sizeof(html),
+      "<html><head><title>BambuHelper Display</title>"
+      "<meta http-equiv='refresh' content='2'>"
+      "<style>body{background:#000;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}"
+      "img{image-rendering:pixelated;border:1px solid #333}</style></head>"
+      "<body><img src='/screenshot' width='%d' height='%d'></body></html>",
+      LY_W, LY_H);
+    server.send(200, "text/html", html);
+  });
 #endif
   server.onNotFound(handleNotFound);
   server.begin();
